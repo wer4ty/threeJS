@@ -25,7 +25,7 @@
 
 		//add plane
 		let planeGeometry = new THREE.PlaneGeometry(20,20);
-		let planeMaterial = new THREE.MeshLambertMaterial({color: 0xcccccc });
+		let planeMaterial = new THREE.MeshLambertMaterial({color: 0x555555 });
 		let plane = new THREE.Mesh(planeGeometry, planeMaterial);
 		plane.receiveShadow = true;
 		plane.rotation.x = -0.5 * Math.PI;
@@ -34,7 +34,7 @@
 
 		// add cube
 		let cubeGeometry = new THREE.CubeGeometry(6,4,6);
-		let cubeMaterial = new THREE.MeshLambertMaterial({color: "red" });
+		let cubeMaterial = new THREE.MeshLambertMaterial({color: "violet" });
 		let cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
 		cube.castShadow = true;
 		scene.add(cube);

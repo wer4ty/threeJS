@@ -90,9 +90,68 @@
 	
 		document.body.appendChild(renderer.domElement);
 
+		create3DTerrain(80,80,3,3, MAX_HEIGHT);
+
 		render();
 	}
 
+	function create3DTerrain(width, depth, spacingX, spacingZ, height) {
+		let geometry = new THREE.Geometry();
+		for(let z= 0; z< depth; z++) {
+			for(let x = 0; x<width; x++) {
+				let vertex = new THREE.Vector3(x*spacingX, Math.random() * height, z*spacingZ);
+				geometry.vertices.push(vertex);
+			}
+		}
+
+		// next we need to define the faces. Which are triangles
+		// we create a rectangle between four vertices, and we do that as two triangles.
+		for(let z =0; z<depth-1; z++) {
+			for(let x =0; x<width-1; x++) {
+				// we need to point to the position in the array
+				/* a - - b
+				   |  x  |
+				   c - - d
+				*/ 
+				let a = x + z * width;
+				let b = (x+1) + (z * width);
+				let c = x + ((z+1) * width);
+				let d = (x+1) + ((z+1)*width);
+
+				let face1 = new THREE.Face3(b,a,c);
+				let face2 = new THREE.Face3(c,d,b);
+
+				face1.color = new THREE.Color(scale(getHighPoint(geometry, face1)).hex());
+				face2.color = new THREE.Color(scale(getHighPoint(geometry, face2)).hex());
+				geometry.faces.push(face1);
+				geometry.faces.push(face2);
+			} 
+		}
+
+		// compute the normals
+		geometry.computeVertexNormals(true);
+		geometry.computeFaceNormals();
+
+		// setup the material
+		let mat = new THREE.MeshPhongMaterial();
+		mat.vertexColors = THREE.FaceColors;
+		mat.shading = THREE.NoShading;
+
+		// create the mesh
+		let groundMesh = new THREE.Mesh(geometry, mat);
+		groundMesh.translateX(-width/1.5);
+		groundMesh.translateZ(-depth/4);
+		groundMesh.name = 'terrain';
+
+		scene.add(groundMesh);
+	}
+
+	function getHighPoint(geometry, face) {
+		let v1 = geometry.vertices[face.a].y;
+		let v2 = geometry.vertices[face.b].y;
+		let v3 = geometry.vertices[face.c].y;
+		return Math.max(v1,v2,v3);
+	}
 
     function addStatsObject() {
     	stats = new Stats();
@@ -107,12 +166,18 @@
 
 		stats.update();
 
-	
+		renderer.render(scene, camera);
+
 		requestAnimationFrame(render);
 
 	}
 
-
+	function addControlGui(controlObj) {
+		let gui = new dat.GUI();
+		gui.add(controlObj, 'toFaceMaterial');
+		gui.add(controlObj, 'toNormalMaterial');
+		gui.add(controlObj, 'smoothShading').onChange(controlObj.onSmoothShadingChange);
+	}
 
 	function handleResize() {
 		camera.aspect = window.innerWidth / window.innerHeight;
@@ -127,15 +192,13 @@
 		maze.draw();
 	}
 
-	window.onload = maze_init;
+	window.onload = init;
 
 	window.addEventListener('resize', handleResize, false);
 	
 </script>
 
 <body>
- <canvas id="maze" width="400" height="400"></canvas>
-
 </body>
 
 </html>

@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+    <html>
+        <head>
+            <title>Earth exemple</title>
+            <script src="../lib/three.js"></script>
+            <script src="../lib/dat.gui.min.js"></script>
+            <script src="../lib/stats.min.js"></script>
+
+            <style>
+            body {
+                /* set margin to 0 and overflow to hidden, to go fullscreen */
+                margin: 0;
+                overflow: hidden;
+                }
+            </style>
+        </head>
+      
+<script type="text/javascript">
+	
+	// global vars
+	var renderer;
+	var scene;
+	var camera;
+	var control;
+	var stats;
+
+	var systems = [];
+
+	function init() {
+
+
+		// init code
+		scene = new THREE.Scene();
+
+		camera = new THREE.PerspectiveCamera(
+			45, window.innerWidth / window.innerHeight, 0.1, 1000);
+
+		renderer = new THREE.WebGLRenderer();
+		renderer.setClearColor(0x000000, 1.0);
+		renderer.setSize(window.innerWidth, window.innerHeight);
+		renderer.shadowMapEnabled = true;
+
+		
+		camera.position.x = 20;
+		camera.position.y = 34;
+		camera.position.z = 40;
+		camera.lookAt(new THREE.Vector3(-50, 0, 10));
+
+		control = new function() {
+			this.rotationSpeed = 0.005;
+			this.opacity = 0.6;
+		}
+
+		addControlGui(control);
+		addStatsObject();
+
+	
+		document.body.appendChild(renderer.domElement);
+
+		setupSound();
+		 loadSound("../assets/audio/pauzy.mp3");
+		 //loadSound("../assets/audio/Imperial_march.ogg");
+
+		render();
+	}
+
+	function addControlGui(controlObj) {
+
+	}
+
+    function addStatsObject() {
+    	stats = new Stats();
+    	stats.setMode(1);
+    	stats.domElement.style.position = "absolute";
+    	stats.domElement.style.left = '0px';
+    	stats.domElement.style.top = '0px';
+    	document.body.appendChild(stats.domElement);
+    }
+
+	function render() {
+
+		c++;
+		if (c%2 == 0) updateWaves();
+
+		stats.update();
+		renderer.render(scene, camera);
+	
+		requestAnimationFrame(render);
+
+	}
+
+	var context;
+var sourceNode;
+var analyser;
+var analyser2;
+var javascriptNode;
+
+
+var c = 0;
+function setupSound() {
+    if (! window.AudioContext) {
+        if (! window.webkitAudioContext) {
+            alert('no audiocontext found');
+        }
+        window.AudioContext = window.webkitAudioContext;
+    }
+    context = new AudioContext();
+
+    // setup a analyzer
+    analyser = context.createAnalyser();
+    analyser.smoothingTimeConstant = 0.4;
+    analyser.fftSize = 1024;
+
+    // create a buffer source node
+    sourceNode = context.createBufferSource();
+    var splitter = context.createChannelSplitter();
+
+    // connect the source to the analyser and the splitter
+    sourceNode.connect(splitter);
+
+    // connect one of the outputs from the splitter to
+    // the analyser
+    splitter.connect(analyser,0,0);
+
+    // and connect to destination
+    sourceNode.connect(context.destination);
+
+    context = new AudioContext();
+}
+
+	function updateWaves() {
+		let array = new Uint8Array(analyser.frequencyBinCount);
+		analyser.getByteTimeDomainData(array);
+
+		// setup the material
+		let pm = new THREE.ParticleBasicMaterial();
+		pm.map = THREE.ImageUtils.loadTexture("../assets/textures/particles/particle.png");
+		pm.blending = THREE.AdditiveBlending;
+		pm.transparent = true;
+		pm.opacity = 0.2;
+		pm.size = 1.5;
+
+
+
+		let geom = new THREE.Geometry();
+		for (let i=0; i<array.length; i++) {
+			let v = new THREE.Vector3(1, array[i]/4, (i/10));
+			geom.vertices.push(v);
+		}
+
+		let ps = new THREE.ParticleSystem(geom, pm);
+		ps.sortParticles = true;
+
+		systems.forEach(function(e) { e.position.x -=1.5 });
+
+		if (systems.length === 20) {
+			let oldPs = systems.shift();
+			if(oldPs) {
+				scene.remove(oldPs);
+			}
+		}
+
+		systems.push(ps);
+		scene.add(ps);
+	}
+
+	function playSound(buffer) {
+    sourceNode.buffer = buffer;
+    sourceNode.start(0);
+}
+
+// load the specified sound
+function loadSound(url) {
+    var request = new XMLHttpRequest();
+    request.open('GET', url, true);
+    request.responseType = 'arraybuffer';
+
+    // When loaded decode the data
+    request.onload = function() {
+
+        // decode the data
+        context.decodeAudioData(request.response, function(buffer) {
+            // when the audio is decoded play the sound
+            playSound(buffer);
+        }, onError);
+    }
+    request.send();
+}
+
+function onError(e) {
+    console.log(e);
+}
+
+	function handleResize() {
+		camera.aspect = window.innerWidth / window.innerHeight;
+		camera.updateProjectionMatrix();
+		renderer.setSize(window.innerWidth, window.innerHeight);
+	}
+
+
+
+	window.onload = init;
+
+	window.addEventListener('resize', handleResize, false);
+	
+</script>
+
+<body>
+
+</body>
+
+</html>

@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+    <html>
+        <head>
+            <title>Animated Cube</title>
+            <script src="../lib/three.js"></script>
+            <script src="../lib/dat.gui.min.js"></script>
+            <script src="../lib/stats.min.js"></script>
+
+            <script src="../lib/tween.js"></script>
+
+  
+            <style>
+            body {
+                /* set margin to 0 and overflow to hidden, to go fullscreen */
+                margin: 0;
+                overflow: hidden;
+                }
+            </style>
+        </head>
+      
+<script type="text/javascript">
+	
+	// global vars
+	var renderer;
+	var scene;
+	var camera;
+
+	let collidableMeshList = [];
+
+	var stats, control;
+	let isTweening = false;
+
+	function createCube(p1, x,y,z, color_cube, i) {
+
+		let cubeGeometry = new THREE.BoxGeometry(p1,p1,p1);
+
+		//let cubeGeometry = new THREE.SphereGeometry(p1/2);
+
+		let cubeMaterial = new THREE.MeshLambertMaterial({color: color_cube, transparent: true, opacity: 0.8});
+		let cube = new THREE.Mesh(cubeGeometry, cubeMaterial); 
+
+		if ( i == 0)  { cube.name = 'cube'; }
+		else { cube.name = 'cube'+i; }
+
+		cube.castShadow = true;
+		cube.position.x = x;
+		cube.position.y = y;
+		cube.position.z = z;
+
+		scene.add(cube);
+		return cube;
+
+	}
+
+	function init() {
+
+
+		// init code
+		scene = new THREE.Scene();
+
+		camera = new THREE.PerspectiveCamera(
+			45, window.innerWidth / window.innerHeight, 0.1, 1000);
+
+		renderer = new THREE.WebGLRenderer();
+		renderer.setClearColor(0x000000, 1.0);
+		renderer.setSize(window.innerWidth, window.innerHeight);
+		renderer.shadowMap.enabled = true;
+
+		let planeGeometry = new THREE.PlaneGeometry(120, 120, 20, 20);
+		let planeMaterial = new THREE.MeshLambertMaterial({color: 0xcccccc});
+		let plane = new THREE.Mesh(planeGeometry, planeMaterial);
+		plane.receiveShadow = true;
+
+		plane.rotation.x = -0.5 * Math.PI;
+		plane.position.x = 0;
+		plane.position.y = 0;
+		plane.position.z = 0;
+		scene.add(plane);
+
+		let cube = createCube(4, 2,2, 0, "red", 0);
+
+		let tmp_cube = createCube(4, 20,2, -10, "green", 1);
+		collidableMeshList.push(tmp_cube);
+
+		/*
+		for (let i=2; i<7; i++) {
+
+			let rand_size = 0;
+			while(rand_size == 0) { rand_size = Math.floor(Math.random()*10); }
+
+			let rand_x = Math.floor(Math.random()*10)+rand_size;
+			let rand_z = Math.floor(Math.random()*10)+rand_size;
+
+			let cube_tmp = createCube(rand_size, rand_x, rand_size/2, rand_z, 0x11ccff*Math.random()*100, i);
+		}
+		*/
+
+		for (let i =1; i < 30; i++) {
+			let obs2 = tmp_cube.clone();
+
+			let rand_x = 0, rand_z = 0;
+
+			let rand_s1 =  Math.floor(Math.random()*10);
+			let rand_s2 =  Math.floor(Math.random()*10);
+
+			while(rand_x == 0 || rand_z == 0) { 
+				rand_x = Math.floor(Math.random()*50); 
+				rand_z = Math.floor(Math.random()*50);
+
+				if(rand_s1 > 5) rand_x *= -1;
+				if(rand_s2 > 5) rand_z *= -1; 
+			}
+
+			obs2.position.set(rand_x,2,rand_z);
+			obs2.material = new THREE.MeshLambertMaterial({color: 0x00ff00*Math.random()*100, transparent: true, opacity: 0.6});
+			scene.add(obs2);
+
+			collidableMeshList.push(obs2);
+		}
+		
+		camera.position.x = 10;
+		camera.position.y = 65;
+		camera.position.z = 40;
+		camera.lookAt(scene.position);
+
+		let spotLight = new THREE.SpotLight(0xffffff);
+		spotLight.position.set(20,60,20);
+		spotLight.shadow.camera.near = 10;
+		spotLight.shadow.camera.far = 150;
+		spotLight.castShadow = true;
+
+		scene.add(spotLight);
+
+		control = new function() {
+
+			this.color = cube.material.color.getHex();
+
+			this.forward = function() {
+				takeStepForward(scene.getObjectByName('cube'), 0, 0.5*Math.PI, 200);
+			};
+			this.back = function() {
+				takeStepBack(scene.getObjectByName('cube'), 0, 0.5*Math.PI, 200);
+			};
+			this.left = function() {
+				takeStepLeft(scene.getObjectByName('cube'), 0, 0.5*Math.PI, 200);
+			};
+			this.right = function() {
+				takeStepRight(scene.getObjectByName('cube'), 0, 0.5*Math.PI, 200);
+			};
+
+			this.cameraX = camera.position.x;
+			this.cameraY = camera.position.y;
+			this.cameraZ = camera.position.z;
+		}
+
+		addControlGui(control);
+		addStatsObject();
+
+		
+		setInterval(function(){
+			let i = Math.floor(Math.random()*4);
+			switch(i){
+				case 1: takeStepLeft(scene.getObjectByName('cube'), 0, 0.5*Math.PI, 100); break;
+				case 2: takeStepRight(scene.getObjectByName('cube'), 0, 0.5*Math.PI, 100); break;
+				case 3: takeStepForward(scene.getObjectByName('cube'), 0, 0.5*Math.PI, 100); break;
+				case 4: takeStepBack(scene.getObjectByName('cube'), 0, 0.5*Math.PI, 100); break;
+			}
+			
+		}, 100);
+		
+
+		document.body.appendChild(renderer.domElement);
+
+		render();
+	}
+
+	function takeStepRight(cube, start, end, time) {
+		let cubeGeometry = cube.geometry;
+		let width = 4;
+
+		if (!isTweening) {
+			let tween = new TWEEN.Tween({
+				x: start,
+			 	cube:cube,
+			  	previous:0
+			})
+			.to({
+				x: end
+			}, time)
+			.easing(TWEEN.Easing.Linear.None)
+			.onStart(function() {
+				cube.position.y += -width / 2;
+				cube.position.z += -width / 2;
+				cubeGeometry.applyMatrix(new THREE.Matrix4().makeTranslation(0, width / 2, width / 2));
+			})
+			.onUpdate(function () {
+				cube.geometry.applyMatrix(new THREE.Matrix4().makeRotationX(-(this.x - this.previous)));
+				cube.geometry.verticesNeedUpdate = true;
+				cube.geometry.normalsNeedUpdate = true;
+				this.previous = this.x;
+			})
+			.onComplete(function(){
+				cube.position.y += 2;
+				cube.position.z += -2;
+				cubeGeometry.applyMatrix(new THREE.Matrix4().makeTranslation(0, -width/2, width/2));
+				cube.position.x = Math.round(cube.position.x);
+				cube.position.y = Math.round(cube.position.y);
+				cube.position.z = Math.round(cube.position.z);
+
+				isTweening = false;
+			})
+			.start();
+		}
+	}
+
+	function takeStepLeft(cube, start, end, time) {
+		let cubeGeometry = cube.geometry;
+		let width = 4;
+		if (!isTweening) {
+
+			let tween = new TWEEN.Tween({
+				x: start,
+				cube: cube,
+				previous: 0
+			})
+			.to({
+				x: end
+			}, time)
+			.easing(TWEEN.Easing.Linear.None)
+			.onStart(function () {
+				isTweening = true;
+				cube.position.y += -width / 2;
+				cube.position.z += width / 2;
+				cubeGeometry.applyMatrix(new THREE.Matrix4().makeTranslation(0, width / 2, -width / 2));
+			})
+			.onUpdate(function () {
+				cube.geometry.applyMatrix(new THREE.Matrix4().makeRotationX(this.x - this.previous));
+				cube.geometry.verticesNeedUpdate = true;
+				cube.geometry.normalsNeedUpdate = true;
+				this.previous = this.x;
+			})
+			.onComplete(function () {
+				cube.position.y += 2;
+				cube.position.z += 2;
+				cubeGeometry.applyMatrix(new THREE.Matrix4().makeTranslation(0, -width / 2, -width / 2));
+				cube.position.x = Math.round(cube.position.x);
+				cube.position.y = Math.round(cube.position.y);
+				cube.position.z = Math.round(cube.position.z);
+				isTweening = false;
+			})
+			.start();
+		}
+	}
+
+
+		function takeStepBack(cube, start, end, time) {
+		let cubeGeometry = cube.geometry;
+		let width = 4;
+		if (!isTweening) {
+			let tween = new TWEEN.Tween({
+				x: start,
+				cube: cube,
+				previous: 0
+			})
+			.to({
+				x: end
+			}, time)
+			.easing(TWEEN.Easing.Linear.None)
+			.onStart(function () {
+				isTweening = true;
+				cube.position.y += -width / 2;
+				cube.position.x += width / 2;
+				cubeGeometry.applyMatrix(new THREE.Matrix4().makeTranslation(-width / 2, width / 2, 0));
+			})
+			.onUpdate(function () {
+				cube.geometry.applyMatrix(new THREE.Matrix4().makeRotationZ( -(this.x - this.previous)));
+				cube.geometry.verticesNeedUpdate = true;
+				cube.geometry.normalsNeedUpdate = true;
+				cube.previous = this.x;
+				this.previous = this.x;
+			})
+			.onComplete(function () {
+				cube.position.y += 2;
+				cube.position.x += 2;
+				cubeGeometry.applyMatrix(new THREE.Matrix4().makeTranslation(-width / 2, -width / 2, 0));
+				cube.position.x = Math.round(cube.position.x);
+				cube.position.y = Math.round(cube.position.y);
+				cube.position.z = Math.round(cube.position.z);
+				isTweening = false;
+			})
+			.start();
+		}
+	}
+
+	function takeStepForward(cube, start, end, time) {
+        var widht = 4;
+        var cubeGeometry = cube.geometry;
+
+        if (!isTweening) {
+            var tween = new TWEEN.Tween( { x: start, cube: cube, previous: 0} )
+                    .to( { x: end }, time )
+                    .easing( TWEEN.Easing.Linear.None )
+                    .onStart( function() {
+                        isTweening = true;
+                        cube.position.y+=-widht/2;
+                        cube.position.x+=-widht/2;
+                        cubeGeometry.applyMatrix(new THREE.Matrix4().makeTranslation( widht/2,  widht/2, 0 ) );
+                    })
+                    .onUpdate( function () {
+                        cube.geometry.applyMatrix( new THREE.Matrix4().makeRotationZ( (this.x-this.previous) ) );
+
+                        cube.geometry.verticesNeedUpdate=true;
+                        cube.geometry.normalsNeedUpdate = true;
+
+                        cube.previous = this.x;
+                        this.previous = this.x;
+                    } )
+                    .onComplete(function() {
+                        cube.position.y+=widht/2;
+                        cube.position.x+=-widht/2;
+                        cubeGeometry.applyMatrix(new THREE.Matrix4().makeTranslation( widht/2, -widht/2, 0 ) );
+
+                        cube.position.x=Math.round(cube.position.x);
+                        cube.position.y=Math.round(cube.position.y);
+                        cube.position.z=Math.round(cube.position.z);
+
+                        isTweening = false;
+                    })
+                    .start();
+        }
+    }
+
+	function addControlGui(controlObj) {
+		let gui = new dat.GUI();
+		gui.add(controlObj, 'forward');
+		gui.add(controlObj, 'back');
+		gui.add(controlObj, 'left');
+		gui.add(controlObj, 'right');
+
+		gui.add(controlObj, 'cameraX', -100, 220);
+		gui.add(controlObj, 'cameraY', 0, 220);
+		gui.add(controlObj, 'cameraZ', -100, 220);
+
+	}
+
+    function addStatsObject() {
+    	stats = new Stats();
+    	stats.setMode(1);
+    	stats.domElement.style.position = "absolute";
+    	stats.domElement.style.left = '0px';
+    	stats.domElement.style.top = '0px';
+    	document.body.appendChild(stats.domElement);
+    }
+
+    let projector = new THREE.Projector();
+    function onDocumentMouseDown( event ) {
+    	event.preventDefault();
+
+    	
+    	let vector = new THREE.Vector3( 
+    	( event.clientX / window.innerWidth ) * 2 - 1,
+    	- (event.clientY / window.innerHeight ) * 2 + 1,
+    	 0.5 );
+    	    	
+
+        projector.unprojectVector(vector,camera);
+
+    	projector.unprojectVector(vector, camera);
+
+    	let raycaster = new THREE.Raycaster(camera.position, vector.sub(camera.position).normalize() );
+
+    	let intersects = raycaster.intersectObjects(collidableMeshList);
+
+    	if (intersects.length > 0) {
+    		intersects[0].object.material.transparent = true;
+    		intersects[0].object.material.color = new THREE.Color(0x0000ff);
+    	}
+    }
+
+    let j = 0;
+	function render() {
+
+		stats.update();
+
+		camera.position.x = control.cameraX;
+		camera.position.y = control.cameraY;
+		camera.position.z = control.cameraZ;
+
+		TWEEN.update();
+
+		let cube = scene.getObjectByName('cube');
+		let originPoint = cube.position.clone();
+
+for (var vertexIndex = 0; vertexIndex < cube.geometry.vertices.length; vertexIndex++)
+        {
+            var localVertex = cube.geometry.vertices[vertexIndex].clone();
+            var globalVertex = localVertex.applyMatrix4( cube.matrix );
+            var directionVector = globalVertex.sub( cube.position );
+
+            var ray = new THREE.Raycaster( originPoint, directionVector.clone().normalize() );
+            var collisionResults = ray.intersectObjects( collidableMeshList );
+            if ( collisionResults.length > 0 && collisionResults[0].distance < directionVector.length() )
+            {
+
+                // if we've got a hit, we just stop the current walk and reset to base point
+                var tweens = TWEEN.getAll();
+
+                if (tweens.length > 0) {
+
+                    tweens[0].stop();
+                    TWEEN.removeAll();
+                    isTweening = false;
+
+                    scene.remove(cube);
+                    cube = createCube(4, 2,2, 0, "red", 0);
+                }
+            }
+        }
+
+		renderer.render(scene, camera);	
+		requestAnimationFrame(render);
+
+	}
+
+
+	function rotateAroundWorldAxis(object, axis, radians) {
+
+		let rotWorldMatrix = new THREE.Matrix4();
+		rotWorldMatrix.makeRotationAxis(axis.normalize(), radians);
+
+		rotWorldMatrix.multiply(object.matrix);
+		object.matrix = rotWorldMatrix;
+
+		object.rotation.setFromRotationMatrix(object.matrix);
+
+	}
+
+
+	function handleResize() {
+		camera.aspect = window.innerWidth / window.innerHeight;
+		camera.updateProjectionMatrix();
+		renderer.setSize(window.innerWidth, window.innerHeight);
+	}
+
+
+
+	window.onload = init;
+
+	window.addEventListener('resize', handleResize, false);
+
+	window.onmousedown=onDocumentMouseDown;
+	
+</script>
+
+<body>
+ <!--<canvas id="maze" width="400" height="400"></canvas>-->
+
+</body>
+
+</html>

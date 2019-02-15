@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+    <html>
+        <head>
+            <title>Earth exemple</title>
+            <script src="../lib/three.js"></script>
+            <script src="../lib/dat.gui.min.js"></script>
+            <script src="../lib/stats.min.js"></script>
+
+    <script src="../lib/maze/array.js"></script>
+    <script src="../lib/maze/cell.js"></script>
+    <script src="../lib/maze/graph.js"></script>
+    <script src="../lib/maze/maze.js"></script>
+    <script src="../lib/maze/mazeGenerator.js"></script>
+    <script src="../lib/maze/underscore-min.js"></script>
+            <style>
+            body {
+                /* set margin to 0 and overflow to hidden, to go fullscreen */
+                margin: 0;
+                overflow: hidden;
+                }
+            </style>
+        </head>
+      
+<script type="text/javascript">
+	
+	// global vars
+	var renderer;
+	var scene;
+	var camera;
+
+
+	var stats, control;
+
+
+	function init() {
+
+
+		// init code
+		scene = new THREE.Scene();
+
+		let maze = new Maze(scene, 17, 100, 100);
+		maze.generate();
+		maze.draw();
+
+		camera = new THREE.PerspectiveCamera(
+			45, window.innerWidth / window.innerHeight, 0.1, 1000);
+
+		renderer = new THREE.WebGLRenderer();
+		renderer.setClearColor(0x000000, 1.0);
+		renderer.setSize(window.innerWidth, window.innerHeight);
+		renderer.shadowMap.enabled = true;
+
+		let planeGeometry = new THREE.PlaneGeometry(100, 100);
+		let planeMaterial = new THREE.MeshLambertMaterial({color: 0xcccccc});
+		let plane = new THREE.Mesh(planeGeometry, planeMaterial);
+		plane.receiveShadow = true;
+
+		plane.rotation.x = -0.5 * Math.PI;
+		plane.position.y = 0;
+		scene.add(plane);
+		
+		camera.position.x = 80;
+		camera.position.y = 120;
+		camera.position.z = 100;
+		camera.lookAt(scene.position);
+
+		let spotLight = new THREE.SpotLight(0xffffff);
+		spotLight.position.set(40,100,80);
+		spotLight.shadowCameraNear = 20;
+		spotLight.shadowCameraFar = 50;
+		spotLight.castShadow = true;
+
+		let ambientLight = new THREE.AmbientLight(0x080808);
+		scene.add(ambientLight);
+		scene.add(spotLight);
+
+		control = new function() {
+			this.rotationSpeed = 0.005;
+			this.opacity = 0.6;
+		}
+
+		addStatsObject();
+
+	
+		document.body.appendChild(renderer.domElement);
+
+		render();
+	}
+
+	function addControlGui(controlObj) {
+		let gui = new dat.GUI();
+	}
+
+    function addStatsObject() {
+    	stats = new Stats();
+    	stats.setMode(1);
+    	stats.domElement.style.position = "absolute";
+    	stats.domElement.style.left = '0px';
+    	stats.domElement.style.top = '0px';
+    	document.body.appendChild(stats.domElement);
+    }
+
+	function render() {
+
+		stats.update();
+
+		renderer.render(scene, camera);	
+		requestAnimationFrame(render);
+
+	}
+
+
+
+	function handleResize() {
+		camera.aspect = window.innerWidth / window.innerHeight;
+		camera.updateProjectionMatrix();
+		renderer.setSize(window.innerWidth, window.innerHeight);
+	}
+
+
+
+	window.onload = init;
+
+	window.addEventListener('resize', handleResize, false);
+	
+</script>
+
+<body>
+ <!--<canvas id="maze" width="400" height="400"></canvas>-->
+
+</body>
+
+</html>

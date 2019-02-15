@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+    <html>
+        <head>
+            <title>Earth exemple</title>
+            <script src="../lib/three.js"></script>
+            <script src="../lib/dat.gui.min.js"></script>
+            <script src="../lib/stats.min.js"></script>
+
+    <script src="../lib/maze/array.js"></script>
+    <script src="../lib/maze/cell.js"></script>
+    <script src="../lib/maze/graph.js"></script>
+    <script src="../lib/maze/maze-orig.js"></script>
+    <script src="../lib/maze/mazeGenerator.js"></script>
+    <script src="../lib/maze/underscore-min.js"></script>
+            <style>
+            body {
+                /* set margin to 0 and overflow to hidden, to go fullscreen */
+                margin: 0;
+                overflow: hidden;
+                }
+            </style>
+        </head>
+      
+<script type="text/javascript">
+	
+	// global vars
+	var renderer;
+	var scene;
+	var camera;
+
+
+	var stats;
+
+
+	function init() {
+
+
+		// init code
+		scene = new THREE.Scene();
+
+		camera = new THREE.PerspectiveCamera(
+			45, window.innerWidth / window.innerHeight, 0.1, 1000);
+
+		renderer = new THREE.WebGLRenderer();
+		renderer.setClearColor(0x000000, 1.0);
+		renderer.setSize(window.innerWidth, window.innerHeight);
+		renderer.shadowMap.enabled = true;
+
+		
+		camera.position.x = 25;
+		camera.position.y = 10;
+		camera.position.z = 23;
+		camera.lookAt(scene.position);
+
+		addStatsObject();
+
+	
+		document.body.appendChild(renderer.domElement);
+
+		render();
+	}
+
+
+    function addStatsObject() {
+    	stats = new Stats();
+    	stats.setMode(1);
+    	stats.domElement.style.position = "absolute";
+    	stats.domElement.style.left = '0px';
+    	stats.domElement.style.top = '0px';
+    	document.body.appendChild(stats.domElement);
+    }
+
+	function render() {
+
+		stats.update();
+
+	
+		requestAnimationFrame(render);
+
+	}
+
+
+
+	function handleResize() {
+		camera.aspect = window.innerWidth / window.innerHeight;
+		camera.updateProjectionMatrix();
+		renderer.setSize(window.innerWidth, window.innerHeight);
+	}
+
+
+	function maze_init() {
+		var maze = new Maze(document, 'maze');
+		maze.generate();
+		maze.draw();
+	}
+
+	window.onload = maze_init;
+
+	window.addEventListener('resize', handleResize, false);
+	
+</script>
+
+<body>
+ <canvas id="maze" width="400" height="400"></canvas>
+
+</body>
+
+</html>

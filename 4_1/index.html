@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+    <html>
+        <head>
+            <title>Audio vsualization exemple</title>
+            <script src="../lib/three.js"></script>
+            <script src="../lib/dat.gui.min.js"></script>
+            <script src="../lib/stats.min.js"></script>
+
+            <style>
+            body {
+                /* set margin to 0 and overflow to hidden, to go fullscreen */
+                margin: 0;
+                overflow: hidden;
+                }
+            </style>
+        </head>
+      
+<script type="text/javascript">
+	
+	// global vars
+	var renderer;
+	var scene;
+	var camera;
+	var stats;
+	var control;
+
+
+	function init() {
+
+
+		// init code
+		scene = new THREE.Scene();
+
+		camera = new THREE.PerspectiveCamera(
+			45, window.innerWidth / window.innerHeight, 0.1, 1000);
+
+		renderer = new THREE.WebGLRenderer();
+		renderer.setClearColor(0x000000, 1.0);
+		renderer.setSize(window.innerWidth, window.innerHeight);
+		renderer.shadowMapEnabled = true;
+
+		let planeGeometry = new THREE.PlaneGeometry(80, 80);
+		let planeMaterial = new THREE.MeshPhongMaterial({color: 0x3333ff});
+		let plane = new THREE.Mesh(planeGeometry, planeMaterial);
+		plane.receiveShadow = true;
+
+		plane.rotation.x = -0.5 * Math.PI;
+		plane.position.x = 0;
+		plane.position.y = -2;
+		plane.position.z = 0;
+
+		scene.add(plane);
+
+		let cubeGeometry = new THREE.BoxGeometry(3,6, 3, 15, 25, 15);
+
+		let pm = new THREE.ParticleBasicMaterial();
+		pm.map = THREE.ImageUtils.loadTexture("../assets/textures/particles/particle.png");
+
+		pm.blending = THREE.AdditiveBlending;
+		pm.transparent = true;
+		pm.size = 0.6;
+
+		let ps = new THREE.ParticleSystem(cubeGeometry, pm);
+		ps.sortParticles = true;
+		ps.name = 'cube';
+		ps.position.x = 1.75;
+		scene.add(ps);
+
+		let pm2 = pm.clone();
+		pm2.map = THREE.ImageUtils.loadTexture("../assets/textures/particles/particle2.png");
+		let ps2 = new THREE.ParticleSystem(cubeGeometry, pm2);
+		ps2.name = 'cube2';
+		ps2.position.x = -1.75;
+		scene.add(ps2);
+
+		/*
+		let cubeMaterial = new THREE.MeshLambertMaterial({color:0xff0000});
+		let cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
+		cube.name = 'cube';
+		cube.position.x = 1.75;
+		scene.add(cube);
+
+		let cube2 = new THREE.Mesh(cubeGeometry, cubeMaterial);
+		cube2.name = 'cube2';
+		cube2.position.x = -1.75;
+		scene.add(cube2);
+		*/
+
+		camera.position.x = 20;
+		camera.position.y = 44;
+		camera.position.z = 10;
+		camera.lookAt(scene.position);
+
+		let spotLight = new THREE.SpotLight(0xffffff);
+		spotLight.position.set(10,20,20);
+		spotLight.shadowCameraNear = 20;
+		spotLight.shadowCameraFar = 50;
+		spotLight.castShadow = true;
+		scene.add(spotLight);
+
+		control = new function() {
+			this.rotationSpeed = 0.005;
+			this.opacity = 0.6;
+		}
+
+		//extras
+		addControlGui(control);
+		addStatsObject();
+
+	
+		document.body.appendChild(renderer.domElement);
+
+		setupSound();
+		render();
+
+		//loadSound("../assets/audio/Imperial_march.ogg");
+		loadSound("../assets/audio/adventure.mp3");
+	}
+
+	function addControlGui(controlObj) {
+		let gui = new dat.GUI();
+		gui.add(controlObj, 'rotationSpeed', -0.01, 0.01);
+	}
+
+    function addStatsObject() {
+    	stats = new Stats();
+    	stats.setMode(1);
+    	stats.domElement.style.position = "absolute";
+    	stats.domElement.style.left = '0px';
+    	stats.domElement.style.top = '0px';
+    	document.body.appendChild(stats.domElement);
+    }
+
+    let context, sourceNode, analyser, analyser2;
+
+
+	function render() {
+
+		//update camera
+		let rotSpeed = control.rotationSpeed;
+		camera.position.x = camera.position.x * Math.cos(rotSpeed) + camera.position.z * Math.sin(rotSpeed);
+
+		camera.position.z = camera.position.z * Math.cos(rotSpeed) - camera.position.x * Math.sin(rotSpeed);
+
+		camera.lookAt(scene.position);
+
+		stats.update();
+
+		renderer.render(scene, camera);
+
+		updateCubes();
+
+		requestAnimationFrame(render);
+
+	}
+
+
+	function updateCubes() {
+		let array = new Uint8Array(analyser.frequencyBinCount);
+		analyser.getByteFrequencyData(array);
+		let average = getAverageVolume(array);
+
+		let array2 = new Uint8Array(analyser2.frequencyBinCount);
+		analyser2.getByteFrequencyData(array2);
+		let average2 = getAverageVolume(array2);
+
+		//clear current state
+		if(scene.getObjectByName('cube')) {
+			let cube = scene.getObjectByName('cube');
+			let cube2 = scene.getObjectByName('cube2');
+
+			cube.scale.y = average/20;
+			cube2.scale.y = average2/20;
+		}		
+	}
+
+	function setupSound() {
+		if (! window.AudioContext) {
+			if (! window.webkitAudioContext) {
+				alert('no audiocontext found');
+			}
+			window.AudioContext = window.webkitAudioContext;
+		}
+		context = new AudioContext();
+
+		//setup a analyzer
+		analyser = context.createAnalyser();
+		analyser.smoothingTimeConstant = 0.4;
+		analyser.fftSize = 1024;
+
+		analyser2 = context.createAnalyser();
+		analyser2.smoothingTimeConstant = 0.4;
+		analyser2.fftSize = 1024;
+
+		//create a buffer source node
+		sourceNode = context.createBufferSource();
+		let splitter = context.createChannelSplitter();
+
+		sourceNode.connect(splitter);
+		splitter.connect(analyser, 0);
+		splitter.connect(analyser2, 1);
+
+		sourceNode.connect(context.destination);
+		context = new AudioContext();
+	}
+
+	function getAverageVolume(array) {
+		let values = 0;
+		let average;
+
+		let length = array.length;
+
+		for (let i=0; i<length; i++) {
+			values += array[i];
+		}
+
+		average = values / length;
+		return average;
+	}
+
+	function playSound(buffer) {
+		sourceNode.buffer = buffer;
+		sourceNode.start(0);
+	}
+
+	function loadSound(url) {
+        var request = new XMLHttpRequest();
+        request.open('GET', url, true);
+        request.responseType = 'arraybuffer';
+
+        // When loaded decode the data
+        request.onload = function() {
+
+            // decode the data
+            context.decodeAudioData(request.response, function(buffer) {
+                // when the audio is decoded play the sound
+                playSound(buffer);
+            }, onError);
+        }
+        request.send();
+    }
+
+	function onError(e) {
+		console.log(e);
+	}
+
+	function handleResize() {
+		camera.aspect = window.innerWidth / window.innerHeight;
+		camera.updateProjectionMatrix();
+		renderer.setSize(window.innerWidth, window.innerHeight);
+	}
+
+
+	window.onload = init;
+
+	window.addEventListener('resize', handleResize, false);
+	
+</script>
+
+<body>
+ </body>
+
+</html>

@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+    <html>
+        <head>
+            <title>Earth exemple</title>
+            <script src="../lib/three.js"></script>
+            <script src="../lib/OrbitControls.js"></script>
+            <script src="../lib/dat.gui.min.js"></script>
+            <script src="../lib/stats.min.js"></script>
+            <script src="../lib/EffectComposer.js"></script>
+            <script src="../lib/RenderPass.js"></script>
+            <script src="../lib/CopyShader.js"></script>
+            <script src="../lib/ShaderPass.js"></script>
+            <script src="../lib/MaskPass.js"></script>
+            <style>
+            body {
+                /* set margin to 0 and overflow to hidden, to go fullscreen */
+                margin: 0;
+                overflow: hidden;
+                }
+            </style>
+        </head>
+      
+<script type="text/javascript">
+	// global vars
+	var renderer;
+	var scene;
+	var camera;
+
+	var sceneBG;
+	var cameraBG;
+
+	var stats;
+	var control;
+	var composer;
+	var cameraControl;
+
+	var clock;
+
+
+	function init() {
+
+		clock = new THREE.Clock();
+
+		// init code
+		scene = new THREE.Scene();
+
+		camera = new THREE.PerspectiveCamera(
+			45, window.innerWidth / window.innerHeight, 0.1, 1000);
+
+		renderer = new THREE.WebGLRenderer();
+		renderer.setClearColor(0x000000, 1.0);
+		renderer.setSize(window.innerWidth, window.innerHeight);
+		renderer.shadowMap.enabled = true;
+
+		let earthShape = new THREE.SphereGeometry(15, 60, 60);
+        let earthMaterial = createEarthMaterial();
+        let earth = new THREE.Mesh(earthShape, earthMaterial);
+        earth.name = 'earth';
+        scene.add(earth);
+
+        // clouds
+        let cloudGeometry =  new THREE.SphereGeometry(15.3, 60, 60);
+        let cloudMaterial = createCloudMaterial();
+        let cloud = new THREE.Mesh(cloudGeometry, cloudMaterial);
+        cloud.name = 'clouds';
+        scene.add(cloud);
+
+		// 1. AmbientLight 
+		let ambientLight = new THREE.AmbientLight(0x111111);
+		ambientLight.name = 'ambient';
+		scene.add(ambientLight);
+		
+		// 2.sun light
+		let directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+		directionalLight.position = new THREE.Vector3(100, 10, -50);
+		directionalLight.name = 'directional';
+		scene.add(directionalLight);
+
+		camera.position.x = 25;
+		camera.position.y = 10;
+		camera.position.z = 23;
+		camera.lookAt(scene.position);
+
+		cameraControl = new THREE.OrbitControls(camera);
+
+		// controls
+		control = new function() {
+			this.rotationSpeed = 0.005;
+			this.ambientLightColor = ambientLight.color.getHex();
+			this.directionalLightColor = directionalLight.color.getHex();
+
+			this.cameraX = camera.position.x;
+			this.cameraY = camera.position.y;
+			this.cameraZ = camera.position.z;
+		};
+
+		addControlGui(control);
+		addStatsObject();
+
+		// camera Background (for stars)
+
+		
+		cameraBG = new THREE.OrthographicCamera(-window.innerWidth, window.innerWidth, window.innerHeight, -window.innerHeight, -10000, 10000);
+		cameraBG.position.z = 50;
+		
+		sceneBG = new THREE.Scene();
+
+		let materialColor = new THREE.MeshBasicMaterial({ map: new THREE.TextureLoader().load("../assets/textures/planets/starry_background.jpg"), depthTest:false});
+		let bgPlane = new THREE.Mesh(
+			new THREE.PlaneGeometry(1,1), materialColor);
+		bgPlane.position.z = -100;
+		bgPlane.scale.set(
+			window.innerWidth*2, window.innerHeight*2, 1);
+		sceneBG.add(bgPlane);
+
+
+		// setup the passes
+		let bgPass = new THREE.RenderPass(sceneBG, cameraBG);
+		
+		let renderPass = new THREE.RenderPass(scene, camera);
+		renderPass.clear = false;
+		
+		let effectCopy = new THREE.ShaderPass(THREE.CopyShader);
+		effectCopy.renderToScreen = true;
+
+		// add these passes to the composer
+		composer = new THREE.EffectComposer(renderer);
+		composer.addPass(bgPass);
+		composer.addPass(renderPass);
+		composer.addPass(effectCopy);
+
+		document.body.appendChild(renderer.domElement);
+
+		render();
+	}
+
+
+
+	function createEarthMaterial() {
+		let earthTexture = new THREE.TextureLoader().load("../assets/textures/planets/earthmap4k.jpg");
+		let earthMaterial = new THREE.MeshPhongMaterial();
+		earthMaterial.map = earthTexture;
+
+		// elevations
+		let normalMap = new THREE.TextureLoader().load("../assets/textures/planets/earth_normalmap_flat4k.jpg");
+		earthMaterial.normalMap = normalMap;
+		earthMaterial.normalScale = new THREE.Vector2(0.5, 0.7);
+
+		// satelite
+		let specularMap = new THREE.TextureLoader().load("../assets/textures/planets/earthspec4k.jpg");
+		earthMaterial.specularMap = specularMap;
+		earthMaterial.specular = new THREE.Color(0x262626);
+
+		return earthMaterial;
+	}
+
+	function createCloudMaterial() {
+		let cloudTexture = new THREE.TextureLoader().load("../assets/textures/planets/fair_clouds_4k.png");
+		let cloudMaterial = new THREE.MeshPhongMaterial();
+		cloudMaterial.map = cloudTexture;
+		cloudMaterial.transparent = true;
+		return cloudMaterial;
+	}
+
+	function addControlGui(controlObj) {
+		let gui = new dat.GUI();
+		gui.add(controlObj, 'rotationSpeed', -2.0, 2.1);
+		gui.addColor(controlObj, 'ambientLightColor');
+		gui.addColor(controlObj, 'directionalLightColor');
+
+		gui.add(controlObj, 'cameraX', 0, 100);
+		gui.add(controlObj, 'cameraY', 0, 100);
+		gui.add(controlObj, 'cameraZ', 0, 100);
+	}
+
+
+    function addStatsObject() {
+    	stats = new Stats();
+    	stats.setMode(1);
+    	stats.domElement.style.position = "absolute";
+    	stats.domElement.style.left = '0px';
+    	stats.domElement.style.top = '0px';
+    	document.body.appendChild(stats.domElement);
+    }
+
+	function render() {
+
+		stats.update();
+
+		cameraControl.update();
+
+		scene.getObjectByName('earth').rotation.y+=control.rotationSpeed;
+		scene.getObjectByName('clouds').rotation.y+=control.rotationSpeed*1.1;
+		
+		
+		camera.position.x= control.cameraX;
+		camera.position.y= control.cameraY;
+		camera.position.z= control.cameraZ;
+
+		// update lights
+		
+		scene.getObjectByName('ambient').color = new THREE.Color(control.ambientLightColor);
+		scene.getObjectByName('directional').color = new THREE.Color(control.directionalLightColor);
+
+		renderer.autoClear = false;
+		composer.render();
+
+		requestAnimationFrame(render);
+
+	}
+
+
+
+	function handleResize() {
+		camera.aspect = window.innerWidth / window.innerHeight;
+		camera.updateProjectionMatrix();
+		renderer.setSize(window.innerWidth, window.innerHeight);
+	}
+
+	window.onload = init;
+
+	window.addEventListener('resize', handleResize, false);
+</script>
+
+
+<body>
+</body>
+
+</html>

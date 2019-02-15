@@ -1,0 +1,93 @@
+<html>
+<head>
+<title>Three.js 1</title>
+<script type="text/javascript" src="../lib/three.js"></script>
+
+<script type="text/javascript">
+	// global vars
+	let renderer, scene, camera;
+
+	function init() {
+		// init code
+		scene = new THREE.Scene();
+
+		renderer = new THREE.WebGLRenderer();
+		renderer.setClearColor(0x000000, 1.0);
+		renderer.setSize(window.innerWidth, window.innerHeight);
+		renderer.shadowMapEnabled = true;
+
+		camera = new THREE.PerspectiveCamera(
+			45, window.innerWidth / window.innerHeight, 0.1, 1000);
+		camera.position.x = 15;
+		camera.position.y = 16;
+		camera.position.z = 13;
+		camera.lookAt(scene.position);
+
+		//add plane
+		let planeGeometry = new THREE.PlaneGeometry(20,20);
+		let planeMaterial = new THREE.MeshLambertMaterial({color: 0x555555 });
+		let plane = new THREE.Mesh(planeGeometry, planeMaterial);
+		plane.receiveShadow = true;
+		plane.rotation.x = -0.5 * Math.PI;
+		plane.position.y = -2;
+		scene.add(plane);
+
+		// add cube
+		let cubeGeometry = new THREE.CubeGeometry(6,4,6);
+		let cubeMaterial = new THREE.MeshLambertMaterial({color: 'violet', transparent:true, opacity:0.6});
+		let cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
+		cube.castShadow = true;
+		scene.add(cube);
+
+		// add light
+		let spotLight = new THREE.SpotLight(0xffffff);
+		spotLight.position.set(10, 20,20);
+		spotLight.shadowCameraNear = 20;
+        spotLight.shadowCameraFar = 50;
+		spotLight.castShadow = true;
+		scene.add(spotLight);
+
+		document.body.appendChild(renderer.domElement);
+
+		// add vertices
+		addVertices(cube);
+
+		render();
+	}
+	function addVertices(mesh) {
+        var vertices = mesh.geometry.vertices;
+        var vertexMaterial = new THREE.MeshPhongMaterial({color: 0x00dd33});
+
+        // for each vertex, add a sphere
+        vertices.forEach(function (vertex) {
+            let vertexSphere = new THREE.SphereGeometry(0.2);
+            let vertexMesh = new THREE.Mesh(vertexSphere, vertexMaterial);
+            vertexMesh.position.x = vertex.x;
+            vertexMesh.position.y = vertex.y;
+            vertexMesh.position.z = vertex.z;
+            scene.add(vertexMesh);
+        });
+    }
+
+	function render() {
+
+		var rotSpeed = 0.01;
+        camera.position.x = camera.position.x * Math.cos(rotSpeed) + camera.position.z * Math.sin(rotSpeed);
+        camera.position.z = camera.position.z * Math.cos(rotSpeed) - camera.position.x * Math.sin(rotSpeed);
+        camera.lookAt(scene.position);
+
+		// render using request Animation Frame
+		renderer.render(scene, camera);
+		requestAnimationFrame(render);
+	}
+
+
+	window.onload = init;
+</script>
+
+</head>
+
+<body>
+</body>
+
+</html>

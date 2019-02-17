@@ -1,12 +1,13 @@
 <!DOCTYPE html>
     <html>
         <head>
-            <title>Create 3D Terrain</title>
+            <title>Create 3D Terrain Perlin</title>
             <script src="../lib/three.js"></script>
             <script src="../lib/dat.gui.min.js"></script>
             <script src="../lib/stats.min.js"></script>
             <script src="../lib/chroma.min.js"></script>
 			<script src="../lib/jquery.min.js"></script>
+			<script src="../lib/perlin.js"></script>
 
 			<script src="../reload.js"></script>
 
@@ -24,7 +25,7 @@
 <script type="text/javascript">
 	
 	// global vars
-	let MAX_HEIGHT = 16;
+	let MAX_HEIGHT = 10;
 	var renderer;
 	var scene;
 	var camera;
@@ -48,13 +49,13 @@
 		renderer.shadowMapEnabled = true;
 
 		
-		camera.position.x = 40;
-		camera.position.y = 40;
-		camera.position.z = 50;
+		camera.position.x = 100;
+		camera.position.y = 100;
+		camera.position.z = 100;
 		camera.lookAt(scene.position);
 
 		let spotLight = new THREE.SpotLight(0xffffff);
-		spotLight.position.set(10,100,10);
+		spotLight.position.set(10,300,10);
 		scene.add(spotLight);
 		scene.add(new THREE.AmbientLight(0x252525));
 
@@ -95,16 +96,22 @@
 	
 		document.body.appendChild(renderer.domElement);
 
-		create3DTerrain(80,80,3,30, MAX_HEIGHT);
+		create3DTerrain(140,140,2.5,2.5, MAX_HEIGHT);
 
 		render();
 	}
 
 	function create3DTerrain(width, depth, spacingX, spacingZ, height) {
+
+		let date = new Date();
+		noise.seed(date.getMilliseconds());
+
 		let geometry = new THREE.Geometry();
 		for(let z= 0; z< depth; z++) {
 			for(let x = 0; x<width; x++) {
-				let vertex = new THREE.Vector3(x*spacingX, Math.random() * height, z*spacingZ);
+
+				let yValue = Math.abs(noise.perlin2(x/7, z/7) * height * 2);
+				let vertex = new THREE.Vector3(x*spacingX, yValue, z*spacingZ);
 				geometry.vertices.push(vertex);
 			}
 		}
@@ -123,6 +130,12 @@
 				let c = x + ((z+1) * width);
 				let d = (x+1) + ((z+1)*width);
 
+				//define the uvs for the veritces we just created.
+				let uva = new THREE.Vector2( x/ (width -1 ), 1-z / (depth-1));
+				let uvb = new THREE.Vector2((x+1) / (width-1), 1-z/(depth-1));
+				let uvc = new THREE.Vector2(x/(width-1), 1 - (z+1) / (depth-1));
+				let uvd = new THREE.Vector2((x+1) / (width -1), 1 - (z+1) / (depth-1));
+
 				let face1 = new THREE.Face3(b,a,c);
 				let face2 = new THREE.Face3(c,d,b);
 
@@ -130,6 +143,9 @@
 				face2.color = new THREE.Color(scale(getHighPoint(geometry, face2)).hex());
 				geometry.faces.push(face1);
 				geometry.faces.push(face2);
+
+				geometry.faceVertexUvs[0].push([uvb,uva,uvc]);
+				geometry.faceVertexUvs[0].push([uvc,uvd,uvb]);
 			} 
 		}
 
@@ -139,13 +155,15 @@
 
 		// setup the material
 		let mat = new THREE.MeshPhongMaterial();
-		mat.vertexColors = THREE.FaceColors;
-		mat.shading = THREE.NoShading;
+		mat.map = THREE.ImageUtils.loadTexture("../assets/textures/wood_1-1024x1024.png");
+		//mat.vertexColors = THREE.FaceColors;
+		//mat.shading = THREE.NoShading;
 
 		// create the mesh
 		let groundMesh = new THREE.Mesh(geometry, mat);
 		groundMesh.translateX(-width/1.5);
 		groundMesh.translateZ(-depth/4);
+		groundMesh.translateY(50);
 		groundMesh.name = 'terrain';
 
 		scene.add(groundMesh);
@@ -160,7 +178,7 @@
 
     function addStatsObject() {
     	stats = new Stats();
-    	stats.setMode(0);
+    	stats.setMode(1);
     	stats.domElement.style.position = "absolute";
     	stats.domElement.style.left = '0px';
     	stats.domElement.style.top = '0px';
@@ -172,6 +190,8 @@
 		stats.update();
 
 		renderer.render(scene, camera);
+
+		
 
 		requestAnimationFrame(render);
 

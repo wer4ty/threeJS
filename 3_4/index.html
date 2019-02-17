@@ -64,7 +64,7 @@
 		renderer = new THREE.WebGLRenderer();
 		renderer.setClearColor(0x000000, 1.0);
 		renderer.setSize(window.innerWidth, window.innerHeight);
-		renderer.shadowMap.enabled = true;
+		renderer.shadowMapEnabled = true;
 
 		let planeGeometry = new THREE.PlaneGeometry(120, 120, 20, 20);
 		let planeMaterial = new THREE.MeshLambertMaterial({color: 0xcccccc});
@@ -125,7 +125,7 @@
 
 		let spotLight = new THREE.SpotLight(0xffffff);
 		spotLight.position.set(20,60,20);
-		spotLight.shadow.camera.near = 10;
+		//spotLight.shadow.camera.near = 10;
 		spotLight.shadow.camera.far = 150;
 		spotLight.castShadow = true;
 

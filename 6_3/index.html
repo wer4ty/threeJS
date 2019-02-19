@@ -35,7 +35,12 @@
         }
     </style>
         </head>
-      
+
+
+<body>
+<img src="../assets/screens/out.jpg">
+</body>
+
 <script>
 
 		
@@ -124,7 +129,7 @@
 
 		//the tween will be used to make all the new elements slowly visible
 		let tweenIn = new TWEEN.Tween({opacity:0})
-				.to({pos: 1.0}, 3000)
+				.to({pos: 1.0}, 2000)
 				.easing(TWEEN.Easing.Sinusoidal.InOut)
 				.onUpdate(function() {
 					let toSet = this.pos;
@@ -311,10 +316,5 @@
 
 </script>
 
-<body>
-
-</body>
-
-</html>
 
 </html>

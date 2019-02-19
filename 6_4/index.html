@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+    <html>
+        <head>
+            <title>Create 3D Terrain Perlin</title>
+            <script src="../lib/three.js"></script>
+            <script src="../lib/dat.gui.min.js"></script>
+            <script src="../lib/stats.min.js"></script>
+            <script src="../lib/chroma.min.js"></script>
+			<script src="../lib/jquery.min.js"></script>
+			<script src="../lib/perlin.js"></script>
+
+			<script src="../lib/CSS3DRenderer.js"></script>
+			<script src="../lib/OrbitControls.js"></script>
+			<script src="../lib/tween.js"></script>
+
+			<script src="../reload.js"></script>
+
+            <style>
+            body {
+                /* set margin to 0 and overflow to hidden, to go fullscreen */
+                margin: 0;
+                overflow: hidden;
+				background: #000000;
+                }
+            </style>
+        </head>
+      
+
+
+<script type="text/javascript">
+	
+	// global vars
+	let MAX_HEIGHT = 12;
+	var renderer;
+	var scene;
+	var camera;
+	var stats, control;
+
+	let scale = chroma.scale(['blue', 'green', 'red']).domain([0, MAX_HEIGHT]);
+	let controls;
+
+	function init() {
+
+
+		// init code
+		scene = new THREE.Scene();
+
+		camera = new THREE.PerspectiveCamera(
+			45, window.innerWidth / window.innerHeight, 0.1, 1000);
+
+		renderer = new THREE.CSS3DRenderer();
+		renderer.setSize(window.innerWidth, window.innerHeight);
+		renderer.domElement.style.position = 'absolute';
+		renderer.domElement.style.top = 0;
+
+		
+		camera.position.x = 500;
+		camera.position.y = 400;
+		camera.position.z = 500;
+		camera.lookAt(scene.position);
+
+		 controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+		control = new function() {
+		};
+
+		addControlGui(control);
+		addStatsObject();
+
+	
+		document.body.appendChild(renderer.domElement);
+
+		let currentGeometry = create3DTerrain(21,21,21,21, 50);
+		let targetGeometry = create3DTerrain(21,21,21,21, 50);
+		let container = new THREE.Object3D();
+
+		// for each verices add a sprite
+		currentGeometry.vertices.forEach(function (e) {
+			let cssObject = new THREE.CSS3DSprite(createDiv());
+			cssObject.position = new THREE.Vector3(e.x, e.y, e.z);
+			container.add(cssObject);
+		});
+
+		// create new geometry based on a new seed
+
+		let tweenIn = new TWEEN.Tween({pos: 0})
+				.to({pos: 1}, 1000)
+				.easing(TWEEN.Easing.Sinusoidal.InOut)
+				.onUpdate(function () {
+					let target = this.pos;
+					let i =0;
+					container.children.forEach(function (e) {
+						e.position.y = currentGeometry.vertices[i].y - (currentGeometry.vertices[i].y - targetGeometry.vertices[i].y) * target;
+						i++;
+					});
+				}).onComplete(function() {
+						currentGeometry = targetGeometry.clone();
+						targetGeometry = create3DTerrain(21,21,21,21,50);
+
+						this.pos = 0;
+				});
+
+				tweenIn.chain(tweenIn);
+				tweenIn.start();
+
+				container.position.y = 50;
+				container.position.z = -150;
+				container.position.x = -150;
+				scene.add(container);
+
+		render();
+	}
+
+	function createDiv() {
+
+		let img = document.createElement('img');
+		img.src = "../assets/textures/particles/flame.png";
+		img.height = 19;
+		img.style.opacity = 1;
+
+		return img;
+	}
+
+	function create3DTerrain(width, depth, spacingX, spacingZ, height) {
+
+		let date = new Date();
+		noise.seed(Math.random() * date.getMilliseconds());
+
+		let geometry = new THREE.Geometry();
+		for(let z= 0; z< depth; z++) {
+			for(let x = 0; x<width; x++) {
+
+				let yValue = Math.abs(noise.perlin2(x/8, z/8) * height * 2);
+				let vertex = new THREE.Vector3(x*spacingX, yValue, z*spacingZ);
+				geometry.vertices.push(vertex);
+			}
+		}
+
+		return geometry;
+
+	}
+
+    function addStatsObject() {
+    	stats = new Stats();
+    	stats.setMode(1);
+    	stats.domElement.style.position = "absolute";
+    	stats.domElement.style.left = '0px';
+    	stats.domElement.style.top = '0px';
+    	document.body.appendChild(stats.domElement);
+    }
+
+	function render() {
+
+		controls.update();
+
+		stats.update();
+
+		renderer.render(scene, camera);
+
+		requestAnimationFrame(render);
+
+		TWEEN.update();
+	}
+
+	function addControlGui(controlObj) {
+		let gui = new dat.GUI();
+	}
+
+	function handleResize() {
+		camera.aspect = window.innerWidth / window.innerHeight;
+		camera.updateProjectionMatrix();
+		renderer.setSize(window.innerWidth, window.innerHeight);
+	}
+
+
+	window.onload = init;
+
+	window.addEventListener('resize', handleResize, false);
+	
+</script>
+
+<body>
+</body>
+
+</html>

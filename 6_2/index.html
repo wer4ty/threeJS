@@ -37,10 +37,15 @@
       
 <script>
 
-    var iframe= '<iframe width="600" height="450" frameborder="0"' +
+   /* var iframe= '<iframe width="600" height="450" frameborder="0"' +
             ' style="border:0" src="https://www.google.com/maps/embed/' +
             'v1/view?zoom=10&maptype=satellite&center=LOCATION' +
             '&key=AIzaSyAVUZTKZz1e6hbEwZOT8CmWfoMhegHL7bs"></iframe>';
+		*/
+
+	var iframe= '<iframe width="600" height="450" frameborder="0"' +
+            ' style="border:0" src="http://sce.ac.il"></iframe>';
+
     var loc = "52.3702%2C4.8952";
 		
 	let renderer, camera, scene, stats, control, controls;
@@ -74,7 +79,11 @@
 
 		document.body.appendChild(renderer.domElement);
 
+		// cube shape
 		createSides(iframe.replace("LOCATION", loc), cube);
+		
+		// sphere shape
+		//createSides(iframe.replace("LOCATION", loc), new THREE.SphereGeometry(700, 6,4));
 
 		render();
 	}

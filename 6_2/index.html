@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+    <html>
+        <head>
+			<title>CSS 3D Renderer</title>
+            <script src="../lib/three.js"></script>
+            <script src="../lib/dat.gui.min.js"></script>
+            <script src="../lib/stats.min.js"></script>
+            <script src="../lib/CSS3DRenderer.js"></script>
+			<script src="../lib/OrbitControls.js"></script>
+
+			<script src="../lib/jquery.min.js"></script>
+			<script src="../reload.js"></script>
+
+            <style>
+        body {
+            /* set margin to 0 and overflow to hidden, to go fullscreen */
+            margin: 0;
+            overflow: hidden;
+            background-color: black;
+        }
+        #someidentifier {
+            position: fixed;
+            z-index: 100;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background-color: black;
+            opacity: 0.7;
+            color: #ffffff;
+            font-family: Calibri;
+        }
+        #query {
+            margin-left: 5px;
+        }
+    </style>
+        </head>
+      
+<script>
+
+    var iframe= '<iframe width="600" height="450" frameborder="0"' +
+            ' style="border:0" src="https://www.google.com/maps/embed/' +
+            'v1/view?zoom=10&maptype=satellite&center=LOCATION' +
+            '&key=AIzaSyAVUZTKZz1e6hbEwZOT8CmWfoMhegHL7bs"></iframe>';
+    var loc = "52.3702%2C4.8952";
+		
+	let renderer, camera, scene, stats, control, controls;
+
+	// global Cube
+	let cube = new THREE.BoxGeometry(450,450,450);
+
+	let sides = [];
+	let divCount = 0;
+
+	function init() {
+		scene = new THREE.Scene();
+
+		camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+		camera.position.x = 1000;
+		camera.position.y = 1000;
+		camera.position.z = 1000;
+		camera.lookAt(scene.position);
+
+		renderer = new THREE.CSS3DRenderer();
+		renderer.setSize(window.innerWidth, window.innerHeight);
+		renderer.domElement.style.position = 'absolute';
+		renderer.domElement.style.top = 0;
+
+		controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+		// extras 
+		cotrol = new function() {};
+
+		addStatsObject();
+
+		document.body.appendChild(renderer.domElement);
+
+		createSides(iframe.replace("LOCATION", loc), cube);
+
+		render();
+	}
+
+	function createCSS3DObject(s) {
+		let div = document.createElement('div');
+		div.innerHTML = s;
+
+		let element = div.firstChild;
+		
+		 element.style.width = '370px';
+        element.style.height = '370px';
+
+        div.style.width = '370px';
+        div.style.height = '370px';
+        div.style.opacity = 0.7;
+        div.style.background = new THREE.Color( Math.random() * 0xffffff ).getStyle();
+
+		let object = new THREE.CSS3DObject(div);
+		object.name = 'test';
+		return object;
+	}
+
+	function createSides(s, geometry) {
+		
+		//merge these, or compensate the offset
+		for(let iFace = 0; iFace < geometry.faces.length; iFace+=2) {
+			
+			// create a new object
+			let side = createCSS3DObject(s);
+
+			// get this face and the next which both make the cube
+			let face = geometry.faces[iFace];
+			let faceNext = geometry.faces[iFace+1];
+
+			//First reposition the div elements based on the two faces
+			// that make up the sides of the cubes
+			console.log(face);
+			let centroid = new THREE.Vector3();
+			centroid.copy(geometry.vertices[face.a])
+					.add(geometry.vertices[face.b])
+					.add(geometry.vertices[face.c])
+					.add(geometry.vertices[faceNext.a])
+					.add(geometry.vertices[faceNext.b])
+					.add(geometry.vertices[faceNext.c])
+					.divideScalar(6);
+
+			side.position.x = centroid.x;
+			side.position.y = centroid.y;
+			side.position.z = centroid.z;
+
+			let up = new THREE.Vector3(0,0,1);
+			let normal = geometry.faces[iFace].normal;
+
+			let axis = new THREE.Vector3();
+			axis.crossVectors(up, normal);
+
+			let angle = Math.atan2(axis.length(), up.dot(normal));
+			axis.normalize();
+
+			let matrix4 = new THREE.Matrix4();
+			matrix4.makeRotationAxis(axis, angle);
+
+			side.rotation.setFromRotationMatrix(matrix4);
+			scene.add(side);
+			sides.push(side);
+
+		}
+	}
+
+	function updateDivElement(pos, s) {
+		let css3dObject = sides[pos];
+		let element = css3dObject.element;
+
+		while (element.hasChildNodes())
+			element.removeChild(element.lastChild);
+
+		let toAdd = createCSS3DObject(s).element.firstChild;
+		element.appendChild(toAdd);
+	}
+
+	function getCenter(object, face) {
+		
+		console.log(face);
+		let a = object.vertices[face.a];
+		let b = object.vertices[face.b];
+		let c = object.vertices[face.c];
+
+		let added = new THREE.Vector3();
+		added.add(a);
+		added.add(b);
+		added.add(c);
+
+		console.log(added);
+
+		return added;
+	}
+
+	function addStatsObject() {
+
+			stats = new Stats();
+			stats.setMode(0);
+
+			stats.domElement.style.position = 'absolute';
+			stats.domElement.style.left = '0px';
+			stats.domElement.style.top = '0px';
+
+			document.body.appendChild(stats.domElement);
+	}
+
+	function render() {
+
+		controls.update();
+
+		stats.update();
+
+		renderer.render(scene,camera);
+		requestAnimationFrame(render);
+
+
+	}
+
+	function handleResize() {
+		camera.aspect = window.innerWidth / window.innerHeight;
+		camera.updateProjectionMatrix();
+		renderer.setSize(window.innerWidth, window.innerHeight);	
+	}
+	
+	var count = 0;
+    function handleSubmit(e) {
+        if (e.keyCode == 13) {
+            var value = document.getElementById("queryField").value;
+            var value = document.getElementById("queryField").value.replace(",","%2c");
+            updateDivElement(count++%6,iframe.replace("LOCATION",value));
+        }
+    }
+
+	window.onload = init;
+	window.addEventListener('resize', handleResize, false);
+
+</script>
+
+<body>
+<div id="someidentifier">
+    <div id="query">Enter coordinates:
+        <input id="queryField" type="text"/></div>
+</div>
+</body>
+<script>
+    document.getElementById("queryField").addEventListener("keydown",handleSubmit);
+    document.getElementById("queryField").value="52.3702,4.8952";
+</script>
+</html>
+
+</html>

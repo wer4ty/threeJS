@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+    <html>
+        <head>
+			<title>CSS 3D Renderer</title>
+            <script src="../lib/three.js"></script>
+            <script src="../lib/dat.gui.min.js"></script>
+            <script src="../lib/stats.min.js"></script>
+            <script src="../lib/CSS3DRenderer.js"></script>
+			<script src="../lib/OrbitControls.js"></script>
+			<script src="../lib/tween.js"></script>
+
+			<script src="../lib/jquery.min.js"></script>
+			<script src="../reload.js"></script>
+
+            <style>
+        body {
+            /* set margin to 0 and overflow to hidden, to go fullscreen */
+            margin: 0;
+            overflow: hidden;
+            background-color: black;
+        }
+        #someidentifier {
+            position: fixed;
+            z-index: 100;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background-color: black;
+            opacity: 0.7;
+            color: #ffffff;
+            font-family: Calibri;
+        }
+        #query {
+            margin-left: 5px;
+        }
+    </style>
+        </head>
+      
+<script>
+
+		
+	let renderer, camera, scene, stats, control, controls;
+
+	let offset = 40;
+	let offscreen = new THREE.Vector3(1000, 0, 1000);
+	let currentElements = [];
+	let newlyAddedElements = [];
+	let toBeRemovedElements = [];
+	let positionAndRotation = [];
+
+	function init() {
+		scene = new THREE.Scene();
+
+		camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+		camera.position.x = 1200;
+		camera.position.y = 1200;
+		camera.position.z = 1200;
+		camera.lookAt(scene.position);
+
+		renderer = new THREE.CSS3DRenderer();
+		renderer.setSize(window.innerWidth, window.innerHeight);
+		renderer.domElement.style.position = 'absolute';
+		renderer.domElement.style.top = 0;
+
+		controls = new THREE.OrbitControls(camera, renderer.domElement);
+		controls.autoRotate = true;
+
+		// extras 
+		control = new function() {
+			this.toCube = function(e) {
+				updateStructure(new THREE.BoxGeometry(20,14,20,5,3,5), 40);
+			};
+
+			this.toCylinder = function() {
+				updateStructure(new THREE.CylinderGeometry(12, 12, 27, 15, 7, true), 40);
+			};
+
+			this.toSphere = function() {
+				updateStructure(new THREE.SphereGeometry(17,10,10),40);
+			};
+
+			this.toPlane = function() {
+				updateStructure(new THREE.PlaneGeometry(30,30,8,8),40)
+			};
+
+			this.toTorus = function() {
+				updateStructure(new THREE.TorusGeometry(20,10,8,10),25);
+			};
+		};
+
+		addStatsObject();
+
+
+		document.body.appendChild(renderer.domElement);
+
+		addControlGui(control);
+
+		updateStructure(new THREE.PlaneGeometry(30,30,8,8),40);
+
+		render();
+	}
+
+	function createCSS3DObject(iFace) {
+		let div = document.createElement('div');
+		let img = document.createElement('img');
+
+		let nrString = ("000"+ iFace * 4).substr(-3,3);
+		img.src = '../assets/screens/WALL-E-' + nrString + ".jpg";
+		img.width = 140;
+
+		div.appendChild(img);
+		div.style.opacity = 0.8;
+
+		let object = new THREE.CSS3DObject(div);
+		object.name = 'test';
+
+		return object;
+	}
+
+	function updateStructure(geometry, offset) {
+	
+		// get the position where we need to move elements to
+		positionAndRotation = getPositionAndRotation(geometry, offset);
+
+		//the tween will be used to make all the new elements slowly visible
+		let tweenIn = new TWEEN.Tween({opacity:0})
+				.to({pos: 1.0}, 3000)
+				.easing(TWEEN.Easing.Sinusoidal.InOut)
+				.onUpdate(function() {
+					let toSet = this.pos;
+					newlyAddedElements.forEach(function (cssObject) {
+						cssObject.element.style.opacity = toSet;
+					});
+
+					let i =0;
+					currentElements.forEach(function (cssObject) {
+
+						//get the elements start position and target position
+						let currentPos = positionAndRotation[i].currentPos;
+						let targetPos = positionAndRotation[i].pos;
+
+						// also get the elements start rotation and end rotations
+                    var currentRotation = positionAndRotation[i].currentRotation;
+                    var targetRotation = new THREE.Euler();
+                    targetRotation.setFromRotationMatrix(positionAndRotation[i].rot);
+
+                    // use the tween to slowly move the elements around.
+                    if (currentPos) {
+                        cssObject.position.x = currentPos.x + (targetPos.x - currentPos.x) * toSet;
+                        cssObject.position.y = currentPos.y + (targetPos.y - currentPos.y) * toSet;
+                        cssObject.position.z = currentPos.z + (targetPos.z - currentPos.z) * toSet;
+
+                        cssObject.rotation.x = currentRotation.x + (targetRotation.x - currentRotation.x) * toSet;
+                        cssObject.rotation.y = currentRotation.y + (targetRotation.y - currentRotation.y) * toSet;
+                        cssObject.rotation.z = currentRotation.z + (targetRotation.z - currentRotation.z) * toSet;
+                    }
+						i++;
+					});
+				});
+
+			tweenIn.start();
+
+			//some cleanup
+			newlyAddedElements = [];
+			toBeRemovedElements = [];
+
+			// work through the positionAndRotation st and either move or create the elements
+			for (let i =0; i<positionAndRotation.length; i++) {
+				
+				if(currentElements.length > i) {
+					// we need to move one from existing ones
+
+					let element = currentElements[i];
+					positionAndRotation[i].currentPos = element.position.clone();
+					positionAndRotation[i].currentRotation = element.rotation.clone();
+				}
+
+				else {
+					//create a new one, and set, it's position of screnn
+					let element = createCSS3DObject(i+1);
+					element.position = offscreen.clone();
+
+					positionAndRotation[i].currentPos = element.position.clone();
+					positionAndRotation[i].currentRotation = element.rotation.clone();
+
+					//set initial opacity to 0
+					element.element.style.opacity = 0;
+
+					// add to the array to keep track of
+					currentElements.push(element);
+					newlyAddedElements.push(element);
+					scene.add(element);
+				}
+			}
+
+			// finally remove the elements that aren't needed anymore
+			for (let i = positionAndRotation.length; i < currentElements.length; i++) {
+				toBeRemovedElements.push(currentElements[i]);
+			}
+
+			// and remove them from the scene
+			for (let i = 0; i< toBeRemovedElements.length; i++) {
+				scene.remove(currentElements.pop());
+			}
+	}
+
+	function getPositionAndRotation(geometry, offset) {
+		let result = [];
+
+		for(let iFace = 0; iFace < geometry.faces.length; iFace += 2) {
+			let newPosition = new THREE.Vector3(0,0,0);
+
+			//get this face and the next which both make the cube
+			let face = geometry.faces[iFace];
+			let faceNext = geometry.faces[iFace + 1];
+
+			// calculate the position of where the elements need to go to
+			let centroid = new THREE.Vector3();
+			centroid.copy( geometry.vertices[face.a] )
+					.add( geometry.vertices[face.b] )
+					.add( geometry.vertices[face.c] )
+					.add( geometry.vertices[faceNext.a] )
+					.add( geometry.vertices[faceNext.b] )
+					.add( geometry.vertices[faceNext.c] )
+					.divideScalar(6).multiplyScalar(offset);
+
+			newPosition = centroid.clone();
+
+			// Now we need to rotate the div in correct position
+			let up = new THREE.Vector3(0, 0, 1);
+
+			// we get the vector from both of the triange, and use the average
+			let normal = new THREE.Vector3();
+			normal.addVectors(face.normal, faceNext.normal);
+			normal.divideScalar(2);
+
+			// we calculate the axis on which to rotate by
+			// selecting the crossof the vectors
+			let axis = new THREE.Vector3();
+			axis.crossVectors(up, normal);
+
+			//based on the azis, in relation to our normal vector
+			// we can calculate the angle
+
+			let angle = Math.atan2(axis.length(), up.dot(normal));
+			axis.normalize();
+
+			// now we can use matrix funtion to rotate the object so
+			// it is aligned with the normal from the face
+			let rotationToApply = new THREE.Matrix4();
+			rotationToApply.makeRotationAxis(axis, angle);
+
+			result.push({pos: newPosition, rot: rotationToApply});
+		}
+
+		return result;
+	}
+
+	function addControlGui(controlObj) {
+		let gui = new dat.GUI();
+		gui.add(controlObj, "toCube");
+		gui.add(controlObj, "toSphere");
+		gui.add(controlObj, "toCylinder");
+		gui.add(controlObj, "toPlane");
+		gui.add(controlObj, "toTorus");
+	}
+
+	function addStatsObject() {
+
+			stats = new Stats();
+			stats.setMode(0);
+
+			stats.domElement.style.position = 'absolute';
+			stats.domElement.style.left = '0px';
+			stats.domElement.style.top = '0px';
+
+			document.body.appendChild(stats.domElement);
+	}
+
+	function render() {
+
+		TWEEN.update();
+
+		controls.update();
+
+		stats.update();
+
+		renderer.render(scene,camera);
+		requestAnimationFrame(render);
+
+
+	}
+
+	function handleResize() {
+		camera.aspect = window.innerWidth / window.innerHeight;
+		camera.updateProjectionMatrix();
+		renderer.setSize(window.innerWidth, window.innerHeight);	
+	}
+	
+	var count = 0;
+    function handleSubmit(e) {
+        if (e.keyCode == 13) {
+            var value = document.getElementById("queryField").value;
+            var value = document.getElementById("queryField").value.replace(",","%2c");
+            updateDivElement(count++%6,iframe.replace("LOCATION",value));
+        }
+    }
+
+	window.onload = init;
+	window.addEventListener('resize', handleResize, false);
+
+</script>
+
+<body>
+
+</body>
+
+</html>
+
+</html>

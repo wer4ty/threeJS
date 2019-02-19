@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+    <html>
+        <head>
+            <title>Create 3D Terrain Perlin</title>
+            <script src="../lib/three.js"></script>
+            <script src="../lib/dat.gui.min.js"></script>
+            <script src="../lib/stats.min.js"></script>
+			<script src="../lib/jquery.min.js"></script>
+			    <script src="../lib/JSONLoader.js"></script>
+			<script src="../lib/OrbitControls.js"></script>
+	
+
+			<script src="../reload.js"></script>
+
+            <style>
+            body {
+                /* set margin to 0 and overflow to hidden, to go fullscreen */
+                margin: 0;
+                overflow: hidden;
+				background: #000000;
+                }
+            </style>
+        </head>
+      
+
+
+<script type="text/javascript">
+	
+	// global vars
+	let MAX_HEIGHT = 12;
+	var renderer;
+	var scene;
+	var camera;
+	var stats, control;
+
+	var animmesh;
+	let controls;
+
+	function init() {
+
+
+		// init code
+		scene = new THREE.Scene();
+
+		camera = new THREE.PerspectiveCamera(
+			45, window.innerWidth / window.innerHeight, 0.1, 1000);
+
+		renderer = new THREE.WebGLRenderer();
+		renderer.setClearColor(0xffffff, 1.0);
+		renderer.setSize(window.innerWidth, window.innerHeight);
+		renderer.shadowMapEnabled = true;
+
+		
+		camera.position.x = 6;
+		camera.position.y = 3;
+		camera.position.z = 6;
+		camera.lookAt(scene.position);
+
+		 controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+		        // add spotlight for the shadows
+        var spotLight = new THREE.DirectionalLight(0xffffff);
+        spotLight.position.set(20, 20, 20);
+        spotLight.castShadow = true;
+        scene.add(spotLight);
+
+        var ambiLight = new THREE.AmbientLight(0x666666);
+        scene.add(ambiLight);
+
+        // setup the control object for the control gui
+        control = new function() {
+            this.rotationSpeed = 0.005;
+        };
+
+		addControlGui(control);
+		addStatsObject();
+
+		loadModel();
+	
+		document.body.appendChild(renderer.domElement);
+
+		render();
+	}
+
+    function loadModel() {
+        var loader = new THREE.JSONLoader();
+        loader.load("../assets/models/exported/estj-dino-anim.js",
+                function (model, loadedMat) {
+                    loadedMat[0].skinning = true;
+
+                    THREE.AnimationHandler.add(model.animations[0]);
+                    animmesh = new THREE.SkinnedMesh(model, loadedMat[0]);
+
+                    animmesh.translateY(-2);
+                    var animation = new THREE.Animation(animmesh, "ArmatureAction");
+                    animation.play();
+
+
+                    scene.add(animmesh);
+                }, "../assets/textures/");
+    }
+
+
+
+    function addStatsObject() {
+    	stats = new Stats();
+    	stats.setMode(1);
+    	stats.domElement.style.position = "absolute";
+    	stats.domElement.style.left = '0px';
+    	stats.domElement.style.top = '0px';
+    	document.body.appendChild(stats.domElement);
+    }
+
+	let clock = new THREE.Clock();
+
+	function render() {
+
+		controls.update();
+
+		stats.update();
+
+		let delta = clock.getDelta();
+		if (animmesh) { THREE.AnimationHandler.update(delta); }
+
+		renderer.render(scene, camera);
+
+		requestAnimationFrame(render);
+
+	}
+
+	function addControlGui(controlObj) {
+		let gui = new dat.GUI();
+	}
+
+	function handleResize() {
+		camera.aspect = window.innerWidth / window.innerHeight;
+		camera.updateProjectionMatrix();
+		renderer.setSize(window.innerWidth, window.innerHeight);
+	}
+
+
+	window.onload = init;
+
+	window.addEventListener('resize', handleResize, false);
+	
+</script>
+
+<body>
+</body>
+
+</html>

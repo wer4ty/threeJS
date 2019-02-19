@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+    <html>
+        <head>
+			<title>CSS 3D Renderer</title>
+            <script src="../lib/three.js"></script>
+            <script src="../lib/dat.gui.min.js"></script>
+            <script src="../lib/stats.min.js"></script>
+            <script src="../lib/CSS3DRenderer.js"></script>
+
+			<script src="../lib/jquery.min.js"></script>
+			<script src="../reload.js"></script>
+
+            <style>
+            body {
+                /* set margin to 0 and overflow to hidden, to go fullscreen */
+                margin: 0;
+                overflow: hidden;
+                }
+
+	      .large {
+            font-size: xx-large;
+        }
+		.wrap {  
+			 background: #fc0; 
+    	box-shadow: 0 0 10px rgba(0,0,0,0.5); 
+    	padding: 10px;
+		}
+            </style>
+        </head>
+      
+<body>
+
+<script>
+
+	let string = '<div class="wrap">'+
+		'<h1>This is and H2 Element.</h1>'+
+		'<span class="large">Hello Esential Three.js</span>'+
+		'<textarea> And this is a textarea</textarea>'+
+		'</div>';
+		
+
+
+	let renderer, camera, scene, stats, control;
+
+	function init() {
+		scene = new THREE.Scene();
+
+		camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+		camera.position.x = 500;
+		camera.position.y = 500;
+		camera.position.z = 500;
+		camera.lookAt(scene.position);
+
+		renderer = new THREE.CSS3DRenderer();
+		renderer.setSize(window.innerWidth, window.innerHeight);
+		renderer.domElement.style.position = 'absolute';
+		renderer.domElement.style.top = 0;
+
+		// +++++++++++++++++++++++++++ CREATE AN EXAMPLE OBJECT AND ADD TO SCENE
+		let cssElement = createCSS3DObject(string);
+		cssElement.position.set(100,100,100);
+		cssElement.name = 'htmlBlock';
+		scene.add(cssElement);
+
+
+		// extras 
+		cotrol = new function() {
+		
+		};
+
+		addStatsObject();
+
+		//$("body").append(renderer.domElement);
+		document.body.appendChild(renderer.domElement);
+
+		render();
+	}
+
+	function createCSS3DObject(s) {
+		// create outerdiv and set inner HTML from supplied string
+		
+		let div = document.createElement('div');
+		div.innerHTML = s;
+		
+		// create a CSS3DObject and return it.
+		let obj = new THREE.CSS3DObject(div);
+		return obj;
+	}
+	function addControlGui(controlObj) {
+		let gui  = new dat.GUI();
+	}
+
+	function addStatsObject() {
+			stats = new Stats();
+			stats.setMode(0);
+
+			stats.domElement.style.position = 'absolute';
+			stats.domElement.style.left = '0px';
+			stats.domElement.style.top = '0px';
+
+			document.body.appendChild(stats.domElement);
+	}
+
+	function render() {
+
+		stats.update();
+
+		scene.getObjectByName('htmlBlock').rotation.z += 0.005;
+		scene.getObjectByName('htmlBlock').rotation.y += 0.005;
+		scene.getObjectByName('htmlBlock').rotation.x += 0.005;
+
+		renderer.render(scene,camera);
+		requestAnimationFrame(render);
+
+
+	}
+
+	function handleResize() {
+		camera.aspect = window.innerWidth / window.innerHeight;
+		camera.updateProjectionMatrix();
+		renderer.setSize(window.innerWidth, window.innerHeight);	
+	}
+	
+	window.onload = init;
+	window.addEventListener('resize', handleResize, false);
+
+</script>
+
+</body>
+
+</html>

@@ -20,11 +20,34 @@
 	      .large {
             font-size: xx-large;
         }
+        
+      iframe {
+      width:1000px;
+		height:800px;
+      
+      }  
+      
+        
 		.wrap {  
-			 background: #fc0; 
+		width:1000px;
+		height:800px;
     	box-shadow: 0 0 10px rgba(0,0,0,0.5); 
     	padding: 10px;
 		}
+		
+				.wrap2 {  
+				font-size:50px;
+    	box-shadow: 0 0 10px rgba(0,0,0,0.5); 
+    	padding: 10px;
+		}
+		
+		.wrap2 button, .wrap2 input {
+			font-size:50px;
+		}
+		
+		.dg.ac {
+    z-index: 9999 !important;
+    }
             </style>
         </head>
       
@@ -32,10 +55,13 @@
 
 <script>
 
-	let string = '<div class="wrap">'+
-		'<h1>This is and H2 Element.</h1>'+
-		'<span class="large">Hello Esential Three.js</span>'+
-		'<textarea> And this is a textarea</textarea>'+
+	let string = '<div class="wrap" id="w_container">'+
+		'<iframe id="dynamicFrame" src="http://example.org" frameborder="0">'+
+		'</div>';
+		
+	let string2 = '<div class="wrap2">'+
+		'Enter website url:<br> <input .class="large" type="text" value="http://example.org" placeholder="http://example.org" id="url_set">'+
+		'<br><button id="set" onClick="change_url()">Set</button>'+
 		'</div>';
 		
 
@@ -46,9 +72,9 @@
 		scene = new THREE.Scene();
 
 		camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-		camera.position.x = 500;
-		camera.position.y = 500;
-		camera.position.z = 500;
+		camera.position.x = 700;
+		camera.position.y = 750;
+		camera.position.z = 1000;
 		camera.lookAt(scene.position);
 
 		renderer = new THREE.CSS3DRenderer();
@@ -57,16 +83,45 @@
 		renderer.domElement.style.top = 0;
 
 		// +++++++++++++++++++++++++++ CREATE AN EXAMPLE OBJECT AND ADD TO SCENE
+		
+		
+		
+		
+		let cssElement4 = createCSS3DObject(string);
+		cssElement4.position.set(50,100,0);
+		cssElement4.name = 'htmlBlock4';
+		scene.add(cssElement4);
+		
+		let cssElement3 = createCSS3DObject(string);
+		cssElement3.position.set(25,75,0);
+		cssElement3.name = 'htmlBlock3';
+		scene.add(cssElement3);
+		
 		let cssElement = createCSS3DObject(string);
-		cssElement.position.set(100,100,100);
+		cssElement.position.set(0,50,0);
 		cssElement.name = 'htmlBlock';
 		scene.add(cssElement);
+		
+		let cssElement2 = createCSS3DObject(string2);
+		cssElement2.position.set(-850,315,130);
+		cssElement2.name = 'htmlBlock2';
+		
+		cssElement2.rotation.y = 45;
+		scene.add(cssElement2);
 
 
 		// extras 
-		cotrol = new function() {
-		
+		control = new function() {
+			this.windowX = 0;
+			this.windowY = 50;
+			this.windowZ = 0;
+
+			this.toolBarX = -850;
+			this.toolBarY = 315;
+			this.toolBarZ = 130;
+
 		};
+		addControlGui(control);
 
 		addStatsObject();
 
@@ -75,6 +130,18 @@
 
 		render();
 	}
+	
+	function addControlGui(controlObj) {
+		let gui = new dat.GUI();
+		gui.add(controlObj, 'windowX', -1000, 1000);
+		gui.add(controlObj, 'windowY', -1000, 1000);
+		gui.add(controlObj, 'windowZ', -1000, 1000);
+		
+		gui.add(controlObj, 'toolBarX', -1000, 1000);
+		gui.add(controlObj, 'toolBarY', -1000, 1000);
+		gui.add(controlObj, 'toolBarZ', -1000, 1000);
+	}
+
 
 	function createCSS3DObject(s) {
 		// create outerdiv and set inner HTML from supplied string
@@ -86,9 +153,7 @@
 		let obj = new THREE.CSS3DObject(div);
 		return obj;
 	}
-	function addControlGui(controlObj) {
-		let gui  = new dat.GUI();
-	}
+	
 
 	function addStatsObject() {
 			stats = new Stats();
@@ -103,11 +168,44 @@
 
 	function render() {
 
-		stats.update();
+		
 
+	/*
 		scene.getObjectByName('htmlBlock').rotation.z += 0.005;
 		scene.getObjectByName('htmlBlock').rotation.y += 0.005;
 		scene.getObjectByName('htmlBlock').rotation.x += 0.005;
+	*/
+	
+		let angle = scene.getObjectByName('htmlBlock').rotation.y;
+		let left = true;
+		let right = false;
+		
+	 
+			
+			//scene.getObjectByName('htmlBlock').rotation.y += 0.05;
+		
+		
+		
+		
+		
+	
+		var wX = control.windowX;
+		var wY = control.windowY;
+		var wZ = control.windowZ;
+		
+		scene.getObjectByName('htmlBlock').position.x = wX;
+		scene.getObjectByName('htmlBlock').position.y = wY;
+		scene.getObjectByName('htmlBlock').position.z = wZ;
+		
+		var tX = control.toolBarX;
+		var tY = control.toolBarY;
+		var tZ = control.toolBarZ;
+		
+		scene.getObjectByName('htmlBlock2').position.x = tX;
+		scene.getObjectByName('htmlBlock2').position.y = tY;
+		scene.getObjectByName('htmlBlock2').position.z = tZ;
+
+		stats.update();
 
 		renderer.render(scene,camera);
 		requestAnimationFrame(render);
@@ -123,6 +221,15 @@
 	
 	window.onload = init;
 	window.addEventListener('resize', handleResize, false);
+	
+	// change url
+	function change_url() {
+		let u = document.getElementById('url_set');
+		
+		let frame = document.getElementById('dynamicFrame');
+		frame.setAttribute('src', u.value);	
+	}
+	
 
 </script>
 
